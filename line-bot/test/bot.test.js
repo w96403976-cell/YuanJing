@@ -28,6 +28,8 @@ test('FAQ 關鍵字與按鈕', () => {
   assert.equal(matchFaq('設備與量測').id, 'metrology');
   assert.equal(matchFaq('合作實績').id, 'clients');
   assert.equal(matchFaq('報價').id, 'quote');
+  assert.equal(matchFaq('參觀預約').id, 'visit');
+  assert.equal(matchFaq('報價詢問').id, 'quote');
   assert.equal(matchFaq('Hi').id, 'greeting');
   assert.equal(matchFaq('machine'), null, 'hi 不可命中 machine');
 });
