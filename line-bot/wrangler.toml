@@ -1,4 +1,4 @@
-name = "yuanjing-line-bot"
+name = "yuanjing"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
@@ -6,10 +6,9 @@ compatibility_date = "2026-11-01"
 [ai]
 binding = "AI"
 
-# 每日 AI 使用次數計數。建立後把 id 換成 `npx wrangler kv namespace create USAGE` 印出的值
+# 每日 AI 使用次數計數。不填 id，第一次部署時 Wrangler 會自動建立 KV 並綁定
 [[kv_namespaces]]
 binding = "USAGE"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
 
 [vars]
 AI_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"

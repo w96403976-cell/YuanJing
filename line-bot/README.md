@@ -37,10 +37,7 @@ npm install
 ```bash
 npx wrangler login
 ```
-```bash
-npx wrangler kv namespace create USAGE
-```
-把印出的 `id` 貼到 `wrangler.toml` 的 `REPLACE_WITH_KV_NAMESPACE_ID`。接著設定兩個機密（會提示你貼上，不會存進程式碼）：
+用來計數的 KV 不用手動建立，第一次部署時會自動建立。接著設定兩個機密（會提示你貼上，不會存進程式碼）：
 ```bash
 npx wrangler secret put LINE_CHANNEL_SECRET
 ```
@@ -50,12 +47,12 @@ npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
 ```bash
 npx wrangler deploy
 ```
-部署完成會顯示網址，例如 `https://yuanjing-line-bot.<你的子網域>.workers.dev`。
+部署完成會顯示網址，例如 `https://yuanjing.<你的子網域>.workers.dev`。
 
 ### 3. 接上 Webhook
 LINE Developers Console → Messaging API → **Webhook URL** 填：
 ```
-https://yuanjing-line-bot.<你的子網域>.workers.dev/webhook
+https://yuanjing.<你的子網域>.workers.dev/webhook
 ```
 按 **Verify** 出現 Success，並開啟 **Use webhook**。
 
