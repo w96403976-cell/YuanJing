@@ -1,11 +1,14 @@
 // 原鯨企業 LINE 問答機器人：FAQ 優先，其他問題交給 Workers AI，額度用完回固定訊息
 import { verifySignature, reply, textMessage, startLoading } from './line.js';
-import { matchFaq, QUICK_TOPICS, FAQ } from './faq.js';
+import { matchFaq, detectLead, leadReply, mentionsProtected, PROTECTED_REPLY, QUICK_TOPICS, FAQ } from './faq.js';
 import { askAI, underDailyLimit, countUsage, FALLBACK } from './ai.js';
 
 const byId = id => FAQ.find(f => f.id === id);
 
 export async function answerFor(text, env, userId) {
+  const lead = detectLead(text);
+  if (lead) return { source: 'lead:' + lead, text: leadReply(lead) };
+  if (mentionsProtected(text)) return { source: 'protected', text: PROTECTED_REPLY() };
   const faq = matchFaq(text);
   if (faq) return { source: 'faq', text: faq.answer() };
   if (!(await underDailyLimit(env))) return { source: 'limit', text: FALLBACK() };

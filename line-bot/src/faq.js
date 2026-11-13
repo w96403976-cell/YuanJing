@@ -1,5 +1,12 @@
 // 常見問題：關鍵字命中就回固定答案，不消耗 AI 額度。
-import { contactText } from './knowledge.js';
+import { contactText, SITE_URL, PROTECTED_NAMES } from './knowledge.js';
+
+// 問題裡出現客戶或相關公司名稱：固定回答，不確認、不否認，也不交給 AI（避免 AI 重複名稱或亂答）
+export function mentionsProtected(text) {
+  const t = text.toLowerCase();
+  return PROTECTED_NAMES.some(n => t.includes(n));
+}
+export const PROTECTED_REPLY = () => `基於保密原則，我們無法確認或說明與特定公司之間的合作或關係，敬請見諒。\n我們服務國內十餘家汽車與零組件企業，以及海外 OEM。\n如需進一步了解，歡迎留下您的公司、聯絡方式與需求，由專人與您聯繫。\n\n${contactText()}`;
 
 // 每則訊息都附上的快速回覆按鈕
 export const QUICK_TOPICS = ['公司介紹', '核心業務', '設備與量測', '合作實績', '聯絡我們'];
@@ -7,12 +14,13 @@ export const QUICK_TOPICS = ['公司介紹', '核心業務', '設備與量測', 
 export const FAQ = [
   {
     id: 'greeting',
+    weak: true, // 問候語優先度最低：訊息裡有其他主題時以其他主題為準
     keywords: ['你好', '您好', '哈囉', 'hello', 'hi', '嗨', '在嗎', '開始', '選單'],
     answer: () => '您好，這裡是原鯨企業 🐳\n我們專注於自動化設計製造、整廠 LAYOUT 規劃與汽機車夾治具。\n\n您可以點下方按鈕，或直接輸入您的問題。',
   },
   {
     id: 'about',
-    keywords: ['公司介紹', '介紹', '簡介', '關於', '認識原鯨', '成立', '幾年', '歷史', '廠房', '規模'],
+    keywords: ['公司介紹', '介紹一下公司', '介紹公司', '公司簡介', '簡介', '關於', '認識原鯨', '成立', '幾年', '歷史', '廠房', '規模', 'profile'],
     answer: () => '原鯨企業有限公司成立於 2004 年 12 月，廠房佔地 350 坪，擁有自有設計團隊。\n我們以品質、納期為第一優先，2008 年起與先構技研合作，推動數位工場自動化。',
   },
   {
@@ -37,7 +45,7 @@ export const FAQ = [
   },
   {
     id: 'equipment',
-    keywords: ['設備', '機台', 'cnc', '加工', '車床', '鑽床', '焊接', '切割', '工廠'],
+    keywords: ['設備', '機台', '機器', '哪些設備', 'cnc', '加工', '車床', '鑽床', '焊接', '切割', '工廠'],
     answer: () => '廠內加工設備：\n・CNC 加工機、車床機、旋臂／立式鑽床機、攻牙機\n・離子切割機、帶鋸機、切斷砂輪機\n・氬焊機、電焊機、氣焊機\n設計、加工、焊接到量測都在廠內完成。',
   },
   {
@@ -47,7 +55,7 @@ export const FAQ = [
   },
   {
     id: 'clients',
-    keywords: ['客戶', '實績', '案例', '合作實績', '作品', '經驗', '車廠', '合作過'],
+    keywords: ['客戶', '實績', '案例', '合作實績', '作品', '經驗', '車廠', '合作過', '服務過', '服務過哪些'],
     answer: () => '我們服務國內十餘家企業，包含日系 OEM 台灣組裝廠、台灣汽車製造商、商用車製造商、Tier 1 汽車零組件大廠等，海外則有德系國際 OEM 與中國大陸合資車廠。\n詳細案例歡迎參考官網或與我們聯繫。',
   },
   {
@@ -59,6 +67,11 @@ export const FAQ = [
     id: 'visit',
     keywords: ['參觀預約', '預約參觀', '參觀', '拜訪', '看廠', '來訪', '預約'],
     answer: () => `歡迎蒞臨原鯨企業參觀！🐳\n請直接在這裡留下以下資料，我們會由專人與您確認時間：\n・公司名稱與聯絡人\n・聯絡電話\n・希望參觀的日期與時段（可提供 2–3 個選項）\n・來訪人數\n・想了解的設備或案例（選填）\n\n${contactText()}`,
+  },
+  {
+    id: 'website',
+    keywords: ['官方網站', '官網', '網站', '網址', 'website'],
+    answer: () => `原鯨企業官方網站：\n${SITE_URL}\n\n網站上有公司介紹、設備實績照片與公司介紹影片。`,
   },
   {
     id: 'contact',
@@ -73,17 +86,43 @@ const norm = s => s.toLowerCase().replace(/\s+/g, '');
 export function matchFaq(text) {
   const t = norm(text);
   if (!t) return null;
-  let best = null, bestLen = 0;
+  let best = null, bestLen = 0, weak = null;
   for (const f of FAQ) {
     for (const k of f.keywords) {
       const kk = norm(k);
       // 英文關鍵字要整字比對，避免 "hi" 命中 "machine"
       const hit = /^[a-z]+$/.test(kk) ? new RegExp(`(^|[^a-z])${kk}([^a-z]|$)`).test(t) : t.includes(kk);
-      if (hit && kk.length > bestLen) { best = f; bestLen = kk.length; }
+      if (!hit) continue;
+      if (f.weak) weak = f;
+      else if (kk.length > bestLen) { best = f; bestLen = kk.length; }
     }
   }
-  if (!best) return null;
+  // 只有問候語、而且去掉問候語後幾乎沒有其他內容時才回招呼（避免「幫我翻譯 hello」被當成打招呼）
+  if (!best) {
+    if (!weak) return null;
+    let rest = t;
+    for (const k of [...weak.keywords, '請問一下', '請問', '想問一下', '想問', '不好意思', '謝謝', '一下', '有人']) rest = rest.split(norm(k)).join('');
+    rest = rest.replace(/[\p{P}\p{S}～~!?？！。，,、…]/gu, '');
+    return [...rest].length <= 3 ? weak : null;
+  }
   // 短訊息（像按鈕、關鍵字）直接用 FAQ；長問句通常有細節，交給 AI 會更貼切
   if ([...t].length <= 15 || bestLen / [...t].length >= 0.3) return best;
   return null;
+}
+
+// 客人回填的預約／報價資料（有電話，加上日期、人數或數量）：固定回「已收到」，不交給 AI，避免 AI 自行承諾時間
+const PHONE = /(\+?886[-\s]?|0)\d{1,3}[-\s]?\d{3,4}[-\s]?\d{3,4}/;
+const VISIT_HINT = /(參觀|來訪|拜訪|看廠|預約|約|\d+\s*(位|人)|\d{1,2}\/\d{1,2}|\d{1,2}月\d{1,2}[日號])/;
+const QUOTE_HINT = /(報價|估價|詢價|需要|\d+\s*(套|台|組|件|個)|圖面|交期)/;
+export function detectLead(text) {
+  if (!PHONE.test(text)) return null;
+  if (VISIT_HINT.test(text) && !/(報價|估價|詢價|\d+\s*(套|台|組|件))/.test(text)) return 'visit';
+  if (QUOTE_HINT.test(text)) return 'quote';
+  if (VISIT_HINT.test(text)) return 'visit';
+  return null;
+}
+export function leadReply(kind) {
+  return kind === 'visit'
+    ? '已收到您的參觀預約資料，謝謝！🐳\n我們的同仁會盡快與您聯繫，確認可安排的日期與時段。\n※ 此為自動回覆，實際參觀時間以專人確認為準。'
+    : '已收到您的需求資料，謝謝！\n我們的同仁會盡快與您聯繫，確認規格與報價細節；如有圖面，專人聯繫時會告知寄送方式。\n※ 此為自動回覆，報價與交期以專人回覆為準。';
 }

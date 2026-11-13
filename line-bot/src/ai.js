@@ -27,11 +27,16 @@ export function cleanAnswer(s) {
     .trim();
 }
 
+// 英文為主的提問（拉丁字母多於中文字）：在問題後面直接要求英文回答，模型比較會遵守
+export const isEnglish = q => (q.match(/[a-z]/gi) || []).length > 3 * (q.match(/[一-鿿]/g) || []).length && /[a-z]{3,}/i.test(q);
+
 export async function askAI(env, question) {
+  const q = question.slice(0, 500);
+  const lang = isEnglish(q) ? '\n\n(Reply in English only. Do not use Chinese.)' : '';
   const res = await env.AI.run(env.AI_MODEL || '@cf/qwen/qwen3-30b-a3b-fp8', {
     messages: [
       { role: 'system', content: systemPrompt() },
-      { role: 'user', content: `${question.slice(0, 500)} /no_think` },
+      { role: 'user', content: `${q}${lang} /no_think` },
     ],
     max_tokens: 400,
     temperature: 0.3,

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import { verifySignature, textMessage } from '../src/line.js';
-import { matchFaq } from '../src/faq.js';
+import { matchFaq, detectLead } from '../src/faq.js';
 import { answerFor } from '../src/index.js';
 import { cleanAnswer } from '../src/ai.js';
 import worker from '../src/index.js';
@@ -76,6 +76,44 @@ test('webhook：錯誤簽章 401、正確簽章 200 並回覆 LINE', async () =>
   assert.equal(r.body.replyToken, 'rt');
   assert.match(r.body.messages[0].text, /聯絡原鯨企業/);
   assert.equal(r.body.messages[0].quickReply.items.length, 5);
+});
+
+test('問候語不搶主題、介紹不誤判、官網有答案', () => {
+  assert.equal(matchFaq('你好，報價？').id, 'quote');
+  assert.equal(matchFaq('哈囉 地址').id, 'contact');
+  assert.equal(matchFaq('你好').id, 'greeting');
+  assert.equal(matchFaq('幫我翻譯 hello'), null);
+  assert.equal(matchFaq('麻煩介紹報價').id, 'quote');
+  assert.equal(matchFaq('官方網站').id, 'website');
+  assert.equal(matchFaq('服務過哪些車廠').id, 'clients');
+  assert.equal(matchFaq('有哪些機器').id, 'equipment');
+});
+
+test('預約／報價資料固定回「已收到」，不交給 AI', async () => {
+  assert.equal(detectLead('大明工業 王小明，電話 0912-345-678，想約 11/20 下午2點，3 位'), 'visit');
+  assert.equal(detectLead('台中精密 林小姐，需要點焊治具 5 套，電話 04-2345-6789'), 'quote');
+  assert.equal(detectLead('請問你們可以做點焊治具嗎'), null);
+  const e = env();
+  const r = await answerFor('大明工業 王小明，電話 0912-345-678，想約 11/20 下午2點，3 位', e, null);
+  assert.equal(r.source, 'lead:visit');
+  assert.equal(e.AI.calls, 0);
+  assert.match(r.text, /以專人確認為準/);
+});
+
+test('提到客戶或相關公司名稱：固定回答、不叫 AI、不重複名稱', async () => {
+  const e = env();
+  for (const q of ['你們和大陸新展是什麼關係？', '聽說你們有幫華擎做治具，是真的嗎', 'Do you work with Toyota?']) {
+    const r = await answerFor(q, e, null);
+    assert.equal(r.source, 'protected');
+    assert.doesNotMatch(r.text, /新展|華擎|Toyota/i);
+  }
+  assert.equal(e.AI.calls, 0);
+});
+
+test('英文提問判斷', async () => {
+  const { isEnglish } = await import('../src/ai.js');
+  assert.equal(isEnglish('Do you make welding jigs?'), true);
+  assert.equal(isEnglish('你們有 CNC 嗎'), false);
 });
 
 test('訊息長度與快速回覆限制', () => {
