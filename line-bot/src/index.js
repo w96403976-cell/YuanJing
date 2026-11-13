@@ -1,0 +1,59 @@
+// 原鯨企業 LINE 問答機器人：FAQ 優先，其他問題交給 Workers AI，額度用完回固定訊息
+import { verifySignature, reply, textMessage, startLoading } from './line.js';
+import { matchFaq, QUICK_TOPICS, FAQ } from './faq.js';
+import { askAI, underDailyLimit, countUsage, FALLBACK } from './ai.js';
+
+const byId = id => FAQ.find(f => f.id === id);
+
+export async function answerFor(text, env, userId) {
+  const faq = matchFaq(text);
+  if (faq) return { source: 'faq', text: faq.answer() };
+  if (!(await underDailyLimit(env))) return { source: 'limit', text: FALLBACK() };
+  if (userId) await startLoading(userId, env.LINE_CHANNEL_ACCESS_TOKEN);
+  try {
+    const answer = await askAI(env, text);
+    await countUsage(env);
+    return { source: 'ai', text: answer };
+  } catch (e) {
+    // Free 方案超過每日 10,000 neurons 時 AI 會直接報錯，一樣回固定訊息
+    console.error('AI failed', e?.message || e);
+    return { source: 'error', text: FALLBACK() };
+  }
+}
+
+async function handleEvent(ev, env) {
+  if (!ev.replyToken) return;
+  const userId = ev.source?.type === 'user' ? ev.source.userId : null;
+  let text;
+  if (ev.type === 'follow') {
+    text = byId('greeting').answer();
+  } else if (ev.type === 'postback') {
+    // 圖文選單若設定 postback，data 例如 "action=contact"
+    const action = new URLSearchParams(ev.postback?.data || '').get('action');
+    text = (byId(action) || byId('greeting')).answer();
+  } else if (ev.type === 'message' && ev.message.type === 'text') {
+    text = (await answerFor(ev.message.text, env, userId)).text;
+  } else if (ev.type === 'message') {
+    text = '目前僅能回覆文字提問，請直接輸入您的問題，或點下方按鈕 👇';
+  } else {
+    return;
+  }
+  await reply(ev.replyToken, [textMessage(text, QUICK_TOPICS)], env.LINE_CHANNEL_ACCESS_TOKEN);
+}
+
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    if (request.method === 'GET') return new Response('YuanJing LINE bot is running.');
+    if (request.method !== 'POST' || url.pathname !== '/webhook') return new Response('Not found', { status: 404 });
+
+    const body = await request.text();
+    const ok = await verifySignature(body, request.headers.get('x-line-signature'), env.LINE_CHANNEL_SECRET);
+    if (!ok) return new Response('Bad signature', { status: 401 });
+
+    const { events = [] } = JSON.parse(body);
+    // 先回 200 給 LINE，實際處理放背景，避免 AI 較慢時 webhook 逾時重送
+    ctx.waitUntil(Promise.all(events.map(ev => handleEvent(ev, env).catch(e => console.error('event failed', e)))));
+    return new Response('OK');
+  },
+};
