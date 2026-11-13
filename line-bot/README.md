@@ -47,12 +47,12 @@ npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
 ```bash
 npx wrangler deploy
 ```
-部署完成會顯示網址，例如 `https://yuanjing.<你的子網域>.workers.dev`。
+部署完成會顯示網址，例如 `https://yuanjing-line-bot.<你的子網域>.workers.dev`。
 
 ### 3. 接上 Webhook
 LINE Developers Console → Messaging API → **Webhook URL** 填：
 ```
-https://yuanjing.<你的子網域>.workers.dev/webhook
+https://yuanjing-line-bot.<你的子網域>.workers.dev/webhook
 ```
 按 **Verify** 出現 Success，並開啟 **Use webhook**。
 

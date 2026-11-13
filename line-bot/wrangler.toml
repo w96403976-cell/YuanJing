@@ -1,4 +1,4 @@
-name = "yuanjing"
+name = "yuanjing-line-bot"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
