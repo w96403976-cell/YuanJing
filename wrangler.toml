@@ -1,0 +1,6 @@
+# 官網（靜態頁面）。LINE 機器人在 line-bot/，是另一個 Worker，不在這裡部署
+name = "yuanjing"
+compatibility_date = "2026-11-01"
+
+[assets]
+directory = "./"
