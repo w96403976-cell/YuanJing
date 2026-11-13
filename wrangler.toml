@@ -4,3 +4,6 @@ compatibility_date = "2026-11-01"
 
 [assets]
 directory = "./"
+
+# 非 main 分支的預覽建置（Cloudflare Workers Builds 的 wrangler preview 需要這個區塊）
+[previews]
