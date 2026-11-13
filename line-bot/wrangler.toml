@@ -1,0 +1,21 @@
+name = "yuanjing-line-bot"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+# Workers AI（免費額度：每天 10,000 neurons，UTC 00:00 重置）
+[ai]
+binding = "AI"
+
+# 每日 AI 使用次數計數。建立後把 id 換成 `npx wrangler kv namespace create USAGE` 印出的值
+[[kv_namespaces]]
+binding = "USAGE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+AI_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8"
+# 每天最多呼叫 AI 幾次；每次約 15 neurons，500 次約 7,500 neurons，留安全餘裕
+AI_DAILY_LIMIT = "500"
+
+# 機密不要寫在這裡，請用：
+#   npx wrangler secret put LINE_CHANNEL_SECRET
+#   npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
