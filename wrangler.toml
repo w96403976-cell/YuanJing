@@ -1,0 +1,9 @@
+# 官網（靜態頁面）。LINE 機器人在 line-bot/，是另一個 Worker，不在這裡部署
+name = "yuanjing"
+compatibility_date = "2026-11-01"
+
+[assets]
+directory = "./"
+
+# 非 main 分支的預覽建置（Cloudflare Workers Builds 的 wrangler preview 需要這個區塊）
+[previews]
