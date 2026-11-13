@@ -4,3 +4,4 @@ line-bot
 README.md
 wrangler.toml
 .assetsignore
+site-worker.js
